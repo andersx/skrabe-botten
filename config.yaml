@@ -1,0 +1,144 @@
+# Daily arXiv digest configuration
+
+categories:
+  - id: cs.LG
+    name: Machine Learning
+  - id: physics.chem-ph
+    name: Chemical Physics
+  - id: q-bio.BM
+    name: Biomolecules
+  - id: physics.bio-ph
+    name: Biological Physics
+
+# Source: arXiv RSS (matches website /list/<cat>/recent announcement days).
+# Default: newest announcement day in the feed only (no multi-day catch-up).
+lookback: latest_announcement_day
+
+arxiv:
+  page_size: 100
+  # RSS can be ~1s; Atom API range scrapes enforce ≥3s (arXiv rate limit)
+  request_pause_seconds: 3.0
+  user_agent: "Mozilla/5.0 arxiv-digest/1.0 (local research)"
+  # Website "recent" counts ≈ new + cross (excludes replacements)
+  announce_types:
+    - new
+    - cross
+
+llm:
+  base_url: https://api.deepseek.com
+  model: deepseek-flash
+  batch_size: 25
+  temperature: 0.2
+  max_retries: 3
+  # Approximate USD per 1M tokens (deepseek-flash off-peak, cache miss)
+  price_input_per_mtok: 0.15
+  price_output_per_mtok: 0.60
+
+output:
+  dir: out
+
+# Discord bot posting (token in .env: STJERNEBOTTENS_DISCORD_TOKEN)
+discord:
+  channel: paper-botten
+  # Optional: pin a channel id if the name exists in multiple servers
+  # channel_id: 123456789012345678
+
+# ChemRxiv (merged into daily scrape). OpenEngage preferred; Crossref fallback
+# when Cloudflare blocks the API (common on servers).
+chemrxiv:
+  enabled: true
+  mailto: arxiv-digest@localhost
+  # Preferred OpenEngage subject areas (used when API is reachable)
+  categories:
+    - name: Theoretical and Computational Chemistry
+    - name: Biological and Medicinal Chemistry
+  # Crossref has no ChemRxiv categories — keep papers matching these terms
+  keyword_filter: true
+  relevance_keywords:
+    - docking
+    - virtual screening
+    - drug discovery
+    - drug design
+    - medicinal
+    - pharmaceutical
+    - ligand
+    - binding affinity
+    - protein-ligand
+    - protein–ligand
+    - qsar
+    - admet
+    - pharmacokinet
+    - molecular dynamics
+    - free energy
+    - force field
+    - machine learning
+    - deep learning
+    - neural network
+    - graph neural
+    - cheminformatic
+    - retrosynthe
+    - molecule generation
+    - pharmacophore
+    - structure-based
+    - fragment-based
+    - interatomic potential
+    - mlip
+    - chemical biology
+    - enzyme inhibit
+    - density functional
+    - quantum chemistry
+    - cryo-em
+    - crystal structure prediction
+
+# bioRxiv — biology preprints (API: api.biorxiv.org)
+biorxiv:
+  enabled: true
+  keyword_filter: true
+  categories:
+    - bioinformatics
+    - biophysics
+    - systems biology
+    - bioengineering
+    - biochemistry
+    - synthetic biology
+    - genomics
+
+# medRxiv — clinical/health preprints (same API family; noisy — review before enabling daily)
+medrxiv:
+  enabled: true
+  keyword_filter: true
+  categories:
+    - health informatics
+    - genetic and genomic medicine
+    - pharmacology and therapeutics
+    - radiology and imaging
+
+curated_labels:
+  - sbdd
+  - virtual_screening
+  - ligand_based_vs
+  - property_prediction
+  - protein_structure
+  - molecular_simulation
+  - binding_affinity
+  - other_pharma_ml
+
+section_order:
+  - id: sbdd
+    title: Structure-based drug design (SBDD)
+    labels: [sbdd]
+  - id: virtual_screening
+    title: Virtual screening
+    labels: [virtual_screening, ligand_based_vs, binding_affinity]
+  - id: property_prediction
+    title: Property prediction
+    labels: [property_prediction]
+  - id: protein_structure
+    title: Protein structure
+    labels: [protein_structure]
+  - id: molecular_simulation
+    title: Molecular simulation
+    labels: [molecular_simulation]
+  - id: other_pharma_ml
+    title: Other pharma ML
+    labels: [other_pharma_ml]

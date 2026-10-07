@@ -1,0 +1,22 @@
+Triage the following arXiv papers. Return JSON:
+{
+  "papers": [
+    {
+      "id": "<arxiv id exactly as given>",
+      "keep": true|false,
+      "categories": ["..."],
+      "priority": 1|2|3,
+      "takeaway": "..."
+    }
+  ]
+}
+
+Rules:
+- Include every input id exactly once.
+- If keep=false, use categories=[] and priority=3 and a short takeaway like "Not relevant to pharma computational chemistry."
+- categories must be a subset of:
+  sbdd, virtual_screening, ligand_based_vs, property_prediction,
+  protein_structure, molecular_simulation, binding_affinity, other_pharma_ml
+
+PAPERS:
+{papers_block}
