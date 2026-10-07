@@ -1,4 +1,4 @@
-# skrabe-botten
+# skrabe-botten - a AN slop-grenade 🧨 for curating preprints
 
 What is my purpose? You scrape papers.
 
