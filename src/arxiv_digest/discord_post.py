@@ -13,23 +13,16 @@ from .discord_format import format_daily_discord
 
 
 def discord_token() -> str:
-    return (
-        os.getenv("STJERNEBOTTENS_DISCORD_TOKEN")
-        or os.getenv("DISCORD_BOT_TOKEN")
-        or os.getenv("DISCORD_TOKEN")
-        or ""
-    ).strip()
+    return (os.getenv("DISCORD_BOT_TOKEN") or os.getenv("DISCORD_TOKEN") or "").strip()
 
 
-def _channel_name(cfg: dict[str, Any]) -> str:
-    discord_cfg = cfg.get("discord") or {}
-    return (os.getenv("DISCORD_CHANNEL") or discord_cfg.get("channel", "paper-botten")).strip().lstrip("#")
+def _channel_name() -> str:
+    return (os.getenv("DISCORD_CHANNEL") or "").strip().lstrip("#")
 
 
-def _channel_id(cfg: dict[str, Any]) -> int | None:
-    discord_cfg = cfg.get("discord") or {}
-    raw = os.getenv("DISCORD_CHANNEL_ID") or discord_cfg.get("channel_id")
-    if raw in (None, "", 0):
+def _channel_id() -> int | None:
+    raw = os.getenv("DISCORD_CHANNEL_ID")
+    if raw in (None, ""):
         return None
     return int(raw)
 
@@ -55,17 +48,23 @@ def _embeds_from_payload(payload: dict[str, Any]) -> list[discord.Embed]:
     return embeds
 
 
-async def _find_channel(client: discord.Client, cfg: dict[str, Any]) -> discord.abc.Messageable:
-    channel_id = _channel_id(cfg)
+async def _find_channel(client: discord.Client) -> discord.abc.Messageable:
+    channel_id = _channel_id()
     if channel_id is not None:
         ch = client.get_channel(channel_id)
         if ch is None:
             ch = await client.fetch_channel(channel_id)
         if ch is None:
-            raise RuntimeError(f"Discord channel id {channel_id} not found (is the bot in that server?).")
+            raise RuntimeError(
+                f"Discord channel id {channel_id} not found (is the bot in that server?)."
+            )
         return ch  # type: ignore[return-value]
 
-    name = _channel_name(cfg)
+    name = _channel_name()
+    if not name:
+        raise RuntimeError(
+            "Set DISCORD_CHANNEL or DISCORD_CHANNEL_ID in .env so the bot knows where to post."
+        )
     matches = [
         ch
         for ch in client.get_all_channels()
@@ -96,9 +95,7 @@ async def _post_async(
 ) -> list[int]:
     token = discord_token()
     if not token:
-        raise RuntimeError(
-            "Missing Discord bot token. Set STJERNEBOTTENS_DISCORD_TOKEN (or DISCORD_BOT_TOKEN) in .env."
-        )
+        raise RuntimeError("Missing Discord bot token. Set DISCORD_BOT_TOKEN in .env.")
 
     payloads = format_daily_discord(
         day,
@@ -117,7 +114,7 @@ async def _post_async(
     @client.event
     async def on_ready() -> None:
         try:
-            channel = await _find_channel(client, cfg)
+            channel = await _find_channel(client)
             for payload in payloads:
                 content = (payload.get("content") or "").strip()
                 raw_embeds = payload.get("embeds") or []
@@ -139,7 +136,7 @@ async def _post_async(
     try:
         await client.start(token)
     except discord.LoginFailure as exc:
-        raise RuntimeError("Discord login failed — check the bot token in .env.") from exc
+        raise RuntimeError("Discord login failed — check DISCORD_BOT_TOKEN in .env.") from exc
 
     if error:
         raise error[0]

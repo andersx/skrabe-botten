@@ -24,7 +24,7 @@ That scrapes everything announced or published in the **past 24 hours** from:
 Then:
 
 1. **DeepSeek** (`deepseek-flash`) triages every paper (keep / drop, P1–P3, category tags, one-line takeaway)
-2. Discord `#paper-botten` gets **P1 + P2** with a core-topic filter (drops soft-only tags like property-prediction-only / `other_pharma_ml`-only)
+2. Discord gets **P1 + P2** with a core-topic filter (drops soft-only tags like property-prediction-only / `other_pharma_ml`-only)
 3. High priority (P1) is marked with 🔥; P2 is unmarked
 
 Outputs land under `out/` (raw JSON, full digest markdown, curated markdown + JSON). Logs: `out/logs/cron.log`.
@@ -36,10 +36,15 @@ cd ~/dev/arxiv-digest   # or wherever you cloned skrabe-botten
 python3 -m venv .venv
 .venv/bin/pip install -e .
 cp .env.example .env
-# Edit .env:
-#   DEEPSEEK_API_KEY
-#   STJERNEBOTTENS_DISCORD_TOKEN
+# Edit .env — see keys below
 ```
+
+| `.env` key | Purpose |
+|------------|---------|
+| `DEEPSEEK_API_KEY` | DeepSeek API key |
+| `DISCORD_BOT_TOKEN` | Bot token from the Discord Developer Portal |
+| `DISCORD_CHANNEL` | Text channel name to post in (without `#`) |
+| `DISCORD_CHANNEL_ID` | Optional snowflake id (preferred if the name is ambiguous) |
 
 Tune sources, categories, and keywords in `config.yaml`. Triage instructions live in `prompts/`.
 
@@ -80,9 +85,9 @@ Check with `crontab -l`. After a run: `tail -f out/logs/cron.log`.
 
 ## Discord
 
-1. Create a bot in the [Discord Developer Portal](https://discord.com/developers/applications); put the token in `.env` as `STJERNEBOTTENS_DISCORD_TOKEN`.
+1. Create a bot in the [Discord Developer Portal](https://discord.com/developers/applications); set `DISCORD_BOT_TOKEN` in `.env`.
 2. Invite it with **Send Messages** (and **Embed Links** if you want).
-3. Use a text channel named `paper-botten` (or set `discord.channel` / `DISCORD_CHANNEL_ID`).
+3. Set `DISCORD_CHANNEL` (name) and/or `DISCORD_CHANNEL_ID` in `.env`.
 
 Posts are flat markdown (no link previews): source tag + title link + takeaway.
 

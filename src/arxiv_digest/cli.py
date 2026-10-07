@@ -232,7 +232,7 @@ def main(argv: list[str] | None = None) -> None:
     p_run.add_argument(
         "--discord",
         action="store_true",
-        help="After curation, post P1/P2 core digest to Discord (#paper-botten).",
+        help="After curation, post P1/P2 core digest to Discord (see .env).",
     )
 
     p_discord = sub.add_parser(

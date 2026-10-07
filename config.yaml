@@ -37,14 +37,9 @@ llm:
 output:
   dir: out
 
-# Discord bot posting (token in .env: STJERNEBOTTENS_DISCORD_TOKEN)
-discord:
-  channel: paper-botten
-  # Optional: pin a channel id if the name exists in multiple servers
-  # channel_id: 123456789012345678
-
 # ChemRxiv (merged into daily scrape). OpenEngage preferred; Crossref fallback
 # when Cloudflare blocks the API (common on servers).
+# Discord: set DISCORD_BOT_TOKEN + DISCORD_CHANNEL (or DISCORD_CHANNEL_ID) in .env
 chemrxiv:
   enabled: true
   mailto: arxiv-digest@localhost
