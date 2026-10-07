@@ -2,102 +2,100 @@
 
 What is my purpose? You scrape papers.
 
-Daily pharma computational chemistry digest (arXiv + ChemRxiv + bioRxiv + medRxiv).
+Daily pharma / computational chemistry digest. Every morning it pulls **four preprint sources**, triages them with DeepSeek, and posts the keepers to Discord.
 
-Daily local pipeline:
+## What runs daily
 
-1. Scrape **one arXiv announcement day** via RSS (same as the website “recent” list)
-2. Save abstracts (`new` + `cross`; replacements skipped)
-3. Send every paper to **DeepSeek** (`deepseek-flash`) for triage
-4. Write a curated markdown digest
+At **07:30 Europe/Copenhagen**, cron runs:
 
-**Important:** The Atom API `submittedDate` filter does **not** match https://arxiv.org/list/cs.LG/recent. This tool uses `https://rss.arxiv.org/rss/<cat>` instead.
+```bash
+python -m arxiv_digest run --last-24h --discord
+```
+
+That scrapes everything announced or published in the **past 24 hours** from:
+
+| Source | How | What we keep |
+|--------|-----|----------------|
+| **arXiv** | RSS (`cs.LG`, `physics.chem-ph`, `q-bio.BM`, `physics.bio-ph`) | `new` + `cross` whose listing day falls in the window |
+| **ChemRxiv** | OpenEngage API, or **Crossref** fallback if Cloudflare 403s | Keyword-filtered computational / medchem papers |
+| **bioRxiv** | CSHL API | Configured categories + keyword filter |
+| **medRxiv** | Same API family | Configured categories + keyword filter |
+
+Then:
+
+1. **DeepSeek** (`deepseek-flash`) triages every paper (keep / drop, P1–P3, category tags, one-line takeaway)
+2. Discord `#paper-botten` gets **P1 + P2** with a core-topic filter (drops soft-only tags like property-prediction-only / `other_pharma_ml`-only)
+3. High priority (P1) is marked with 🔥; P2 is unmarked
+
+Outputs land under `out/` (raw JSON, full digest markdown, curated markdown + JSON). Logs: `out/logs/cron.log`.
 
 ## Setup
 
 ```bash
-cd ~/dev/arxiv-digest
+cd ~/dev/arxiv-digest   # or wherever you cloned skrabe-botten
 python3 -m venv .venv
 .venv/bin/pip install -e .
 cp .env.example .env
-# Edit .env and set DEEPSEEK_API_KEY from https://platform.deepseek.com
+# Edit .env:
+#   DEEPSEEK_API_KEY
+#   STJERNEBOTTENS_DISCORD_TOKEN
 ```
+
+Tune sources, categories, and keywords in `config.yaml`. Triage instructions live in `prompts/`.
 
 ## Commands
 
 ```bash
-# Scrape newest announcement day (e.g. Mon 5 Oct) + curate
-.venv/bin/python -m arxiv_digest run
+# Morning job (all four sources, past 24h) + Discord
+.venv/bin/python -m arxiv_digest run --last-24h --discord
 
-# Scrape only (latest announce day)
-.venv/bin/python -m arxiv_digest scrape
+# Same scrape/curate without posting
+.venv/bin/python -m arxiv_digest run --last-24h
 
-# Scrape a specific announce day
-.venv/bin/python -m arxiv_digest scrape --day 2026-10-05
+# Single arXiv announce day (+ ChemRxiv/bioRxiv/medRxiv for that calendar day)
+.venv/bin/python -m arxiv_digest run --day 2026-10-05
 
-# Curate an existing scrape
-.venv/bin/python -m arxiv_digest curate
-.venv/bin/python -m arxiv_digest curate --day 2026-10-05
+# Date range via arXiv Atom submittedDate (+ other sources day-by-day)
+.venv/bin/python -m arxiv_digest scrape --from 2026-09-22 --to 2026-10-06
+.venv/bin/python -m arxiv_digest curate --day 2026-09-22_to_2026-10-06
 
-# Post curated digest to Discord (#paper-botten)
-.venv/bin/python -m arxiv_digest discord --day 2026-10-05
-
-# Scrape + curate + Discord in one go
-.venv/bin/python -m arxiv_digest run --discord
+# Post an already curated day
+.venv/bin/python -m arxiv_digest discord --day 2026-10-07
 ```
 
-## ChemRxiv
+**Note:** arXiv’s Atom `submittedDate` filter does **not** match https://arxiv.org/list/cs.LG/recent. Daily mode uses RSS (`https://rss.arxiv.org/rss/<cat>`), which matches the website announce day.
 
-Daily runs also pull **ChemRxiv** and merge it into the same curated digest:
-
-- Preferred subjects: *Theoretical and Computational Chemistry*, *Biological and Medicinal Chemistry* (OpenEngage API when reachable)
-- Fallback: Crossref DOI prefix `10.26434` + keyword filter (OpenEngage is often Cloudflare-blocked on servers)
-
-Toggle / tune in `config.yaml` under `chemrxiv:`.
-
-## Discord bot
-
-1. Create a bot in the [Discord Developer Portal](https://discord.com/developers/applications), copy the token into `.env` as `STJERNEBOTTENS_DISCORD_TOKEN`.
-2. Invite the bot to your server with **Send Messages** and **Embed Links**.
-3. Create (or use) a text channel named `paper-botten` (configurable in `config.yaml` / `DISCORD_CHANNEL`).
-4. Post with `python -m arxiv_digest discord` or `run --discord`.
-
-The bot posts **P1–P2 only**, excluding keeps tagged solely `other_pharma_ml`. If the channel name exists in multiple servers, set `DISCORD_CHANNEL_ID` in `.env`.
-
-## Schedule (every morning 07:30 Europe/Copenhagen)
-
-Scrapes everything announced/published in the **past 24 hours** (arXiv RSS + ChemRxiv + bioRxiv + medRxiv), curates, and posts to Discord:
+## Schedule
 
 ```bash
 chmod +x scripts/install_cron.sh
 ./scripts/install_cron.sh
 ```
 
-Manual equivalent:
+Installs:
 
-```bash
-.venv/bin/python -m arxiv_digest run --last-24h --discord
-```
+`30 7 * * * TZ=Europe/Copenhagen … run --last-24h --discord`
+
+Check with `crontab -l`. After a run: `tail -f out/logs/cron.log`.
+
+## Discord
+
+1. Create a bot in the [Discord Developer Portal](https://discord.com/developers/applications); put the token in `.env` as `STJERNEBOTTENS_DISCORD_TOKEN`.
+2. Invite it with **Send Messages** (and **Embed Links** if you want).
+3. Use a text channel named `paper-botten` (or set `discord.channel` / `DISCORD_CHANNEL_ID`).
+
+Posts are flat markdown (no link previews): source tag + title link + takeaway.
 
 ## Outputs
 
 | Path | Contents |
 |------|----------|
-| `out/raw/YYYY-MM-DD.json` | All scraped papers |
+| `out/raw/YYYY-MM-DD.json` | All scraped papers (all sources) |
 | `out/digest/YYYY-MM-DD.md` | Full abstract dump |
-| `out/curated/YYYY-MM-DD.md` | LLM-ranked pharma digest |
+| `out/curated/YYYY-MM-DD.md` | LLM-ranked digest |
 | `out/curated/YYYY-MM-DD.json` | Structured curation + token usage |
 | `out/logs/cron.log` | Cron stdout/stderr |
 
-## Categories scraped
-
-- `cs.LG` — Machine Learning  
-- `physics.chem-ph` — Chemical Physics  
-- `q-bio.BM` — Biomolecules  
-- `physics.bio-ph` — Biological Physics  
-
-Edit `config.yaml` and `prompts/` to change categories or triage instructions.
-
 ## Cost
 
-Sending all ~400 weekday papers to `deepseek-flash` is typically **~$0.07–0.15/day** (~$2–3/month). Usage and estimated USD are logged in each curated JSON.
+A busy weekday (arXiv + preprints → DeepSeek) is typically on the order of **a few cents** with `deepseek-flash`. Exact usage is logged in each curated JSON.
